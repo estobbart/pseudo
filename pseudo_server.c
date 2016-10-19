@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the Lesser GNU General Public License
  * version 2.1 along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
 #include <stdio.h>
@@ -145,13 +145,18 @@ handle_sigalrm(int sig) {
 #define PSEUDO_CHILD_PROCESS_TIMEOUT 2
 int
 pseudo_server_start(int daemonize) {
-	struct sockaddr_un sun = { .sun_family = AF_UNIX, .sun_path = PSEUDO_SOCKET };
+	struct sockaddr_un sun;
 	char *pseudo_path;
 	int newfd, lockfd;
 	int rc, save_errno;
+	int len;
 	char *lockname;
 	char *lockpath;
 	struct flock lock_data;
+
+	memset(&sun, 0, sizeof(sun));
+	sun.sun_family = AF_UNIX;
+	strcpy(sun.sun_path, PSEUDO_SOCKET);
 
 	/* we want a sane umask for server operations; this is what
 	 * would control the modes of database files, sockets, and so
@@ -341,7 +346,10 @@ pseudo_server_start(int daemonize) {
 			strerror(errno));
 		exit(PSEUDO_EXIT_SOCKET_UNLINK);
 	}
-	if (bind(listen_fd, (struct sockaddr *) &sun, sizeof(sun)) == -1) {
+
+
+	len = strlen(sun.sun_path) + sizeof(sun.sun_family);
+	if (bind(listen_fd, (struct sockaddr *)&sun, len) == -1) {
 		pseudo_diag("couldn't bind listening socket: %s\n", strerror(errno));
 		exit(PSEUDO_EXIT_SOCKET_BIND);
 	}
@@ -612,7 +620,7 @@ pseudo_server_loop(void) {
 	FD_SET(clients[0].fd, &events);
 	max_fd = clients[0].fd;
 	timeout = (struct timeval) { .tv_sec = LOOP_DELAY, .tv_usec = 0 };
-	
+
 	/* EINTR tends to come from profiling, so it is not a good reason to
 	 * exit; other signals are caught and set the flag causing a graceful
 	 * exit. */
@@ -667,7 +675,7 @@ pseudo_server_loop(void) {
 				if (die_forcefully)
 					break;
 			}
-			if (!die_forcefully && 
+			if (!die_forcefully &&
 			    (FD_ISSET(clients[0].fd, &events) ||
 			     FD_ISSET(clients[0].fd, &reads))) {
 				len = sizeof(client);
